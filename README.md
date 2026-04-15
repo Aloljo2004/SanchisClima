@@ -4,7 +4,7 @@ Aplicación móvil desarrollada con **React Native + Expo** para la gestión de 
 
 ---
 
-## 📱 Capturas de pantalla
+## 📱 Pantallas
 
 > _Pantalla de login · Dashboard · Detalle de actividad · Gestión de materiales_
 
