@@ -1,192 +1,107 @@
-# 🔧 Partes de Trabajo — Javier Sanchis Climas de Alzira
+# 🔧 Partes de Trabajo
 
-Aplicación móvil desarrollada con **React Native + Expo** para la gestión de partes de trabajo del equipo técnico de **Javier Sanchis Climas de Alzira**. Permite a los operarios consultar, iniciar y finalizar sus actividades del día, así como gestionar los materiales utilizados, todo integrado en tiempo real con el ERP **Odoo**.
-
----
-
-## 📱 Pantallas
-
-> _Pantalla de login · Dashboard · Detalle de actividad · Gestión de materiales_
+Aplicación móvil para el equipo técnico de **Javier Sanchis Climas de Alzira**. Permite a los operarios gestionar sus actividades del día directamente desde el móvil, conectada en tiempo real con el ERP Odoo de la empresa.
 
 ---
 
-## ✨ Funcionalidades principales
+## 📲 ¿Qué es esta app?
 
-| Funcionalidad | Descripción |
+**Partes de Trabajo** es una app para Android e iOS que permite a cada técnico:
+
+- Ver las actividades que tiene asignadas para hoy
+- Iniciar y finalizar cada actividad registrando la hora exacta
+- Consultar y añadir los materiales utilizados
+- Acceder con huella dactilar para mayor comodidad
+
+Todo queda registrado automáticamente en el sistema de la empresa (Odoo).
+
+---
+
+## ✨ Funcionalidades
+
+### 🔐 Inicio de sesión
+- Acceso con el usuario y contraseña de Odoo
+- Opción de acceso rápido con **huella dactilar** (una vez iniciada sesión por primera vez)
+- La sesión se guarda de forma segura en el dispositivo
+
+### 📋 Dashboard (pantalla principal)
+La pantalla principal muestra las actividades organizadas en cuatro secciones:
+
+| Sección | Descripción |
 |---|---|
-| 🔐 **Autenticación Odoo** | Login con usuario y contraseña contra la API JSON-RPC de Odoo |
-| 👆 **Biometría** | Acceso rápido con huella dactilar (Face ID / Touch ID) |
-| 📅 **Dashboard por secciones** | Actividades de hoy, mis actividades, sin asignar e histórico |
-| ▶️ **Iniciar actividad** | Registra la hora de inicio en Odoo y pone el parte en curso |
-| ⏹️ **Finalizar actividad** | Registra la hora de fin y mueve la tarea Kanban a la etapa cerrada |
-| 📦 **Gestión de materiales** | Consulta y añade materiales usados en cada actividad |
-| 🔄 **Pull-to-refresh** | Recarga los datos con un gesto de arrastre hacia abajo |
-| ⏳ **Skeleton loading** | Animaciones de carga mientras se obtienen datos de la API |
-| ⚡ **Sesión persistente** | La sesión se guarda de forma segura con `expo-secure-store` |
-| 🌙 **Tema oscuro** | Interfaz oscura con sistema de diseño personalizado |
+| 📅 **Actividades de hoy** | Las tareas programadas para el día actual |
+| 👷 **Mis actividades** | Todas las actividades asignadas al técnico |
+| 📭 **Sin asignar** | Actividades disponibles aún no asignadas |
+| 📋 **Finalizadas** | Historial de actividades completadas |
+
+### ▶️ Detalle de actividad
+Al entrar en una actividad se puede ver:
+- Nombre de la actividad, cliente y factura asociada
+- Estado actual: **Pendiente**, **En curso** o **Finalizada**
+- Hora de inicio y fin (cuando corresponda)
+- Referencia del parte de origen
+
+Y realizar las siguientes acciones:
+- **Iniciar** — registra la hora de inicio en Odoo
+- **Finalizar** — registra la hora de finalización y abre la pantalla de materiales
+- **Ver materiales** — accede a los materiales usados (disponible también en curso)
+
+### 📦 Materiales
+- Lista de materiales registrados en la actividad
+- Posibilidad de añadir nuevos materiales con cantidad
 
 ---
 
-## 🛠️ Stack tecnológico
+## 📥 Cómo instalar
 
-| Tecnología | Versión | Uso |
-|---|---|---|
-| **React Native** | 0.81.5 | Framework UI multiplataforma |
-| **Expo** | ~54.0 | Toolchain y SDK nativo |
-| **Expo Router** | ~6.0 | Navegación basada en sistema de archivos |
-| **TypeScript** | ~5.9 | Tipado estático |
-| **Zustand** | ^5.0 | Gestión de estado global (auth) |
-| **Axios** | ^1.8 | Cliente HTTP para la API JSON-RPC de Odoo |
-| **expo-secure-store** | ~15.0 | Almacenamiento seguro de sesión y credenciales |
-| **expo-local-authentication** | ~17.0 | Autenticación biométrica (huella / Face ID) |
-| **react-native-paper** | ^5.13 | Componentes UI base |
-| **react-native-reanimated** | ~4.1 | Animaciones fluidas |
-| **date-fns** | ^4.1 | Formateo de fechas |
+### Opción 1 — Expo Go (recomendado para pruebas)
 
----
+1. Instala la app **Expo Go** en tu móvil:
+   - [Android (Google Play)](https://play.google.com/store/apps/details?id=host.exp.exponent)
+   - [iOS (App Store)](https://apps.apple.com/app/expo-go/id982107779)
 
-## 📁 Estructura del proyecto
-
-```
-AppSanchis/
-├── app/                        # Pantallas (Expo Router)
-│   ├── _layout.tsx             # Layout raíz y protección de rutas
-│   ├── index.tsx               # Pantalla de redirección inicial
-│   ├── login.tsx               # Pantalla de login
-│   ├── dashboard.tsx           # Dashboard principal
-│   └── actividad/
-│       ├── [id].tsx            # Detalle de una actividad
-│       └── materiales/
-│           └── [id].tsx        # Gestión de materiales de una actividad
-│
-├── components/                 # Componentes reutilizables
-│   ├── ActividadCard.tsx       # Tarjeta de actividad para el listado
-│   ├── ErrorBanner.tsx         # Banner de error con reintento
-│   └── LoadingSkeleton.tsx     # Skeletons de carga animados
-│
-├── services/                   # Capa de acceso a datos
-│   ├── odoo.ts                 # Cliente JSON-RPC y autenticación Odoo
-│   ├── auth.ts                 # Gestión de credenciales y biometría
-│   ├── partes.ts               # Consulta de partes y actividades
-│   ├── actividades.ts          # Iniciar / finalizar actividades
-│   ├── materiales.ts           # CRUD de materiales
-│   └── mockData.ts             # Datos de prueba para desarrollo
-│
-├── store/
-│   └── authStore.ts            # Estado global de autenticación (Zustand)
-│
-├── constants/
-│   └── theme.ts                # Sistema de diseño (colores, tipografía, espaciado)
-│
-├── app.json                    # Configuración de Expo
-└── package.json
-```
-
----
-
-## 🚀 Instalación y puesta en marcha
-
-### Prerrequisitos
-
-- **Node.js** >= 18
-- **npm** o **yarn**
-- **Expo CLI**: `npm install -g expo-cli`
-- Dispositivo físico o emulador con la app **Expo Go** instalada
-
-### Pasos
-
+2. Clona el repositorio y arranca el proyecto:
 ```bash
-# 1. Clonar el repositorio
 git clone https://github.com/tu-usuario/AppSanchis.git
 cd AppSanchis
-
-# 2. Instalar dependencias
 npm install
-
-# 3. Arrancar el servidor de desarrollo
 npm start
-# o para plataformas específicas:
-npm run android
-npm run ios
 ```
 
-Escanea el QR con **Expo Go** (Android) o la cámara (iOS) para abrir la app en tu dispositivo.
+3. Escanea el código QR que aparece en la terminal con la app Expo Go.
+
+### Opción 2 — APK para Android
+
+> Si tienes un archivo `.apk` compilado, instálalo directamente en el dispositivo Android activando la opción **"Instalar desde fuentes desconocidas"** en los ajustes del sistema.
 
 ---
 
-## ⚙️ Configuración
+## 🖐️ Cómo usar la app
 
-La URL del servidor Odoo y el nombre de la base de datos se configuran en `services/odoo.ts`:
-
-```typescript
-export const BASE_URL = 'https://odoopruebas.aleza.pro';
-export const DB_NAME  = 'odoo';
-```
-
-> **Nota:** No se incluyen credenciales en el repositorio. La sesión se almacena de forma cifrada en el dispositivo mediante `expo-secure-store`.
-
----
-
-## 🔗 Integración con Odoo
-
-La aplicación se comunica con Odoo mediante su API **JSON-RPC** estándar (`/web/dataset/call_kw`). Los modelos utilizados son:
-
-| Modelo Odoo | Descripción |
-|---|---|
-| `jornada.proyecto` | Partes de trabajo |
-| `jornada.actividad` | Actividades dentro de un parte |
-| `jornada.actividad.material` | Materiales usados en una actividad |
-| `project.task` | Tareas de proyectos (sincronización de etapa Kanban) |
-| `project.task.type` | Tipos/etapas de tarea Kanban |
-
-### Flujo de autenticación
-
-```
-App  →  POST /web/session/authenticate  →  Odoo
-                                    ←  session_id (cookie)
-App  →  Guarda session_id en expo-secure-store
-App  →  Inyecta Cookie: session_id=... en cada petición
-```
+1. **Abre la app** e inicia sesión con tu usuario y contraseña de Odoo.
+2. Si es la primera vez, guarda tus credenciales para poder usar la **huella dactilar** en el futuro.
+3. En el **dashboard**, verás tus actividades del día bajo la sección *"Actividades de hoy"*.
+4. Pulsa sobre una actividad para ver sus detalles.
+5. Cuando llegues a la obra, pulsa **▶ Iniciar Actividad** — quedará registrada la hora.
+6. Al terminar, pulsa **⏹ Finalizar** — se registrará la hora de fin y podrás añadir los materiales utilizados.
+7. En cualquier momento puedes hacer **pull-to-refresh** (arrastrar hacia abajo) para actualizar los datos.
 
 ---
 
-## 🗺️ Flujo de navegación
+## 📋 Requisitos
 
-```
-/               → Redirección automática según sesión
-├── /login      → Pantalla de acceso (credenciales o biometría)
-└── /dashboard  → Vista principal con 4 secciones de actividades
-    └── /actividad/[id]             → Detalle y acciones de actividad
-        └── /actividad/materiales/[id]  → Materiales de la actividad
-```
+- Android 8.0 o superior / iOS 13 o superior
+- Conexión a internet (para sincronizar con Odoo)
+- Usuario activo en el Odoo de la empresa
 
 ---
 
-## 🔒 Seguridad
+## 👤 Autor
 
-- Las credenciales y el `session_id` se almacenan con **`expo-secure-store`** (Keychain en iOS, Keystore en Android).
-- La autenticación biométrica utiliza **`expo-local-authentication`** y nunca envía datos biométricos al servidor.
-- Las sesiones expiradas se detectan automáticamente y redirigen al login.
-
----
-
-## 📦 Scripts disponibles
-
-```bash
-npm start          # Inicia el servidor Expo (Metro Bundler)
-npm run android    # Abre en emulador/dispositivo Android
-npm run ios        # Abre en simulador/dispositivo iOS
-npm run web        # Abre en el navegador web
-```
-
----
-
-## 🧑‍💻 Autor
-
-**Salvador Cano** — Proyecto de prácticas en **Javier Sanchis Climas de Alzira**
+Desarrollado por **Salvador Cano** como proyecto de prácticas en **Javier Sanchis Climas de Alzira**.
 
 ---
 
 ## 📄 Licencia
 
-Este proyecto es privado y de uso interno para **Javier Sanchis Climas de Alzira**. Todos los derechos reservados.
+Uso interno exclusivo de **Javier Sanchis Climas de Alzira**. Todos los derechos reservados.
