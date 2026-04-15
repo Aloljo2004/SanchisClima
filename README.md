@@ -2,7 +2,7 @@
 
 Aplicación móvil para el equipo técnico de **Javier Sanchis Climas de Alzira**. Permite a los operarios gestionar sus actividades del día directamente desde el móvil, conectada en tiempo real con el ERP Odoo de la empresa.
 
----
+------------------------
 
 ## 📲 ¿Qué es esta app?
 
@@ -15,7 +15,7 @@ Aplicación móvil para el equipo técnico de **Javier Sanchis Climas de Alzira*
 
 Todo queda registrado automáticamente en el sistema de la empresa (Odoo).
 
----
+------------------------
 
 ## ✨ Funcionalidades
 
@@ -50,7 +50,7 @@ Y realizar las siguientes acciones:
 - Lista de materiales registrados en la actividad
 - Posibilidad de añadir nuevos materiales con cantidad
 
----
+------------------------
 
 ## 📥 Cómo instalar
 
@@ -74,7 +74,7 @@ npm start
 
 > Si tienes un archivo `.apk` compilado, instálalo directamente en el dispositivo Android activando la opción **"Instalar desde fuentes desconocidas"** en los ajustes del sistema.
 
----
+------------------------
 
 ## 🖐️ Cómo usar la app
 
@@ -86,7 +86,7 @@ npm start
 6. Al terminar, pulsa **⏹ Finalizar** — se registrará la hora de fin y podrás añadir los materiales utilizados.
 7. En cualquier momento puedes hacer **pull-to-refresh** (arrastrar hacia abajo) para actualizar los datos.
 
----
+------------------------
 
 ## 📋 Requisitos
 
