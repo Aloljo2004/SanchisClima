@@ -1,0 +1,86 @@
+﻿Starting Metro Bundler
+Web Bundling failed 1133ms node_modules\expo-router\entry.js (1 module)
+node.exe : SyntaxError: no
+de_modules\expo-router\ent
+ry.js: [BABEL] C:\Users\sa
+lca\OneDrive\Escritorio\Pr
+oyectoSanchis\AppSanchis\n
+ode_modules\expo-router\en
+try.js: Cannot find 
+module 'react-native-workl
+ets/plugin'
+En línea: 1 Carácter: 1
++ & "C:\Program 
+Files\nodejs/node.exe" "C:
+\Users\salca\AppData\Roami
+ng\ ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo        
+      : NotSpecified    : 
+(SyntaxError: no.    
+..orklets/plugin':S    
+tring) [], RemoteEx    
+ception
+    + FullyQualifiedErr   
+ orId : NativeComman    
+dError
+ 
+Require stack:
+- C:\Users\salca\OneDrive\
+Escritorio\ProyectoSanchis
+\AppSanchis\node_modules\r
+eact-native-reanimated\plu
+gin\index.js
+- C:\Users\salca\OneDrive\
+Escritorio\ProyectoSanchis
+\AppSanchis\node_modules\e
+xpo\node_modules\babel-pre
+set-expo\build\index.js
+- C:\Users\salca\OneDrive\
+Escritorio\ProyectoSanchis
+\AppSanchis\node_modules\e
+xpo\internal\babel-preset.
+js
+- C:\Users\salca\OneDrive\
+Escritorio\ProyectoSanchis
+\AppSanchis\node_modules\e
+xpo\node_modules\@expo\met
+ro-config\build\loadBabelC
+onfig.js
+- C:\Users\salca\OneDrive\
+Escritorio\ProyectoSanchis
+\AppSanchis\node_modules\e
+xpo\node_modules\@expo\met
+ro-config\build\babel-tran
+sformer.js
+- C:\Users\salca\OneDrive\
+Escritorio\ProyectoSanchis
+\AppSanchis\node_modules\e
+xpo\node_modules\@expo\met
+ro-config\build\transform-
+worker\metro-transform-wor
+ker.js
+- C:\Users\salca\OneDrive\
+Escritorio\ProyectoSanchis
+\AppSanchis\node_modules\e
+xpo\node_modules\@expo\met
+ro-config\build\transform-
+worker\transform-worker.js
+- C:\Users\salca\OneDrive\
+Escritorio\ProyectoSanchis
+\AppSanchis\node_modules\m
+etro\src\DeltaBundler\Work
+er.flow.js
+- C:\Users\salca\OneDrive\
+Escritorio\ProyectoSanchis
+\AppSanchis\node_modules\m
+etro\src\DeltaBundler\Work
+er.js
+- C:\Users\salca\OneDrive\
+Escritorio\ProyectoSanchis
+\AppSanchis\node_modules\j
+est-worker\build\workers\p
+rocessChild.js (While 
+processing: "base$0")
