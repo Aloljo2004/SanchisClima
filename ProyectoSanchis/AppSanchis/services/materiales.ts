@@ -15,8 +15,6 @@ export interface Producto {
   uom_id: [number, string];
 }
 
-const MATERIAL_FIELDS = ['id', 'product_id', 'cantidad', 'uom_id', 'actividad_id', 'a_pedir'];
-
 // ─── Buscar productos ─────────────────────────────────────────────
 export async function searchProductos(query: string): Promise<Producto[]> {
   if (!query.trim()) return [];
@@ -28,33 +26,33 @@ export async function searchProductos(query: string): Promise<Producto[]> {
   );
 }
 
-// ─── Materiales de una actividad ──────────────────────────────────
-export async function getMaterialesByActividad(
-  actividadId: number,
-  aPedir = false
-): Promise<Material[]> {
-  // Si el campo a_pedir existe en el modelo, filtra por él
-  // Si no existe, Odoo devolverá un error — en ese caso quita el filtro a_pedir
-  try {
-    return await callKw(
-      'jornada.actividad.material',
+// ─── Todos los materiales de una actividad (separados por a_pedir) ──
+export async function getAllMaterialesByActividad(
+  actividadId: number
+): Promise<{ usados: Material[]; aPedir: Material[] }> {
+  // Obtener materiales utilizados de la actividad
+  const usados: Material[] = await callKw(
+    'jornada.actividad.material',
+    'search_read',
+    [[['actividad_id', '=', actividadId]]],
+    { fields: ['id', 'product_id', 'cantidad', 'uom_id', 'actividad_id'] }
+  );
+
+  // Para los materiales a pedir necesitamos conocer el parte (proyecto_id)
+  const act = await callKw('jornada.actividad', 'search_read', [[['id', '=', actividadId]]], { fields: ['proyecto_id'], limit: 1 });
+  const proyecto_id = act[0]?.proyecto_id ? act[0].proyecto_id[0] : null;
+
+  let aPedir: Material[] = [];
+  if (proyecto_id) {
+    aPedir = await callKw(
+      'jornada.material.faltante',
       'search_read',
-      [[
-        ['actividad_id', '=', actividadId],
-        ['a_pedir', '=', aPedir],
-      ]],
-      { fields: MATERIAL_FIELDS }
+      [[['proyecto_id', '=', proyecto_id], ['state', '=', 'pendiente']]],
+      { fields: ['id', 'proyecto_id', 'product_id', 'cantidad', 'uom_id', 'fecha_prevista', 'state', 'notas'] }
     );
-  } catch {
-    // Fallback si el campo a_pedir no existe en el módulo Odoo
-    const all: Material[] = await callKw(
-      'jornada.actividad.material',
-      'search_read',
-      [[['actividad_id', '=', actividadId]]],
-      { fields: ['id', 'product_id', 'cantidad', 'uom_id', 'actividad_id'] }
-    );
-    return all;
   }
+
+  return { usados, aPedir };
 }
 
 // ─── Añadir material ──────────────────────────────────────────────
@@ -64,28 +62,37 @@ export async function addMaterial(
   cantidad: number,
   aPedir = false
 ): Promise<Material> {
-  const vals: Record<string, any> = {
-    product_id: product.id,
-    cantidad,
-    uom_id: product.uom_id[0],
-    actividad_id: actividadId,
-  };
+  if (aPedir) {
+    // Si es a pedir, se envía al modelo jornada.material.faltante que depende del proyecto (parte)
+    const act = await callKw('jornada.actividad', 'search_read', [[['id', '=', actividadId]]], { fields: ['proyecto_id'], limit: 1 });
+    const proyecto_id = act[0]?.proyecto_id ? act[0].proyecto_id[0] : null;
 
-  // Incluir a_pedir sólo si el campo existe (el módulo lo soporta)
-  // Si falla, se reintenta sin él
-  try {
-    vals.a_pedir = aPedir;
-    const newId: number = await callKw('jornada.actividad.material', 'create', [vals]);
+    if (!proyecto_id) {
+      throw new Error("No se pudo obtener el parte de la actividad para registrar el material faltante.");
+    }
+
+    const vals = {
+      proyecto_id: proyecto_id,
+      product_id: product.id,
+      cantidad,
+    };
+
+    const newId: number = await callKw('jornada.material.faltante', 'create', [vals]);
     return {
       id: newId,
       product_id: [product.id, product.name],
       cantidad,
       uom_id: product.uom_id,
-      actividad_id: actividadId,
-      a_pedir: aPedir,
+      proyecto_id: [proyecto_id, '']
     };
-  } catch {
-    delete vals.a_pedir;
+  } else {
+    // Si es material utilizado, va a la actividad
+    const vals = {
+      product_id: product.id,
+      cantidad,
+      uom_id: product.uom_id[0],
+      actividad_id: actividadId,
+    };
     const newId: number = await callKw('jornada.actividad.material', 'create', [vals]);
     return {
       id: newId,
@@ -98,6 +105,7 @@ export async function addMaterial(
 }
 
 // ─── Eliminar material ────────────────────────────────────────────
-export async function deleteMaterial(materialId: number): Promise<void> {
-  await callKw('jornada.actividad.material', 'unlink', [[materialId]]);
+export async function deleteMaterial(materialId: number, forPedir: boolean = false): Promise<void> {
+  const model = forPedir ? 'jornada.material.faltante' : 'jornada.actividad.material';
+  await callKw(model, 'unlink', [[materialId]]);
 }

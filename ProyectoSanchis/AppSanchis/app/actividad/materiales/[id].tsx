@@ -1,63 +1,57 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
-  View, Text, TextInput, StyleSheet, ScrollView, FlatList,
-  TouchableOpacity, ActivityIndicator, Modal, Alert, Animated,
+  View, Text, TextInput, StyleSheet, ScrollView,
+  TouchableOpacity, ActivityIndicator, Modal, Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams } from 'expo-router';
 import {
-  searchProductos, getMaterialesByActividad,
+  searchProductos, getAllMaterialesByActividad,
   addMaterial, deleteMaterial,
 } from '../../../services/materiales';
 import type { Material, Producto } from '../../../services/materiales';
 import ErrorBanner from '../../../components/ErrorBanner';
 import { Colors, Typography, Spacing, Radius, Shadow } from '../../../constants/theme';
 
-// ─── Componente de item material con efecto swipe-to-delete ──────
-function MaterialItem({ item, onDelete }: { item: Material; onDelete: () => void }) {
+type Tab = 'usados' | 'aPedir';
+
+// ─── Item: Materiales utilizados ──────────────────────────────────
+function MaterialItemUsado({ item, onDelete }: { item: Material; onDelete: () => void }) {
   const [deleting, setDeleting] = useState(false);
 
   const handleDelete = () => {
     Alert.alert('Eliminar material', `¿Eliminar "${item.product_id[1]}"?`, [
       { text: 'Cancelar', style: 'cancel' },
       {
-        text: 'Eliminar',
-        style: 'destructive',
-        onPress: async () => {
-          setDeleting(true);
-          await onDelete();
-        },
+        text: 'Eliminar', style: 'destructive',
+        onPress: async () => { setDeleting(true); await onDelete(); },
       },
     ]);
   };
 
   return (
-    <View style={miStyles.row}>
-      <View style={miStyles.info}>
-        <Text style={miStyles.name} numberOfLines={1}>{item.product_id[1]}</Text>
-        <Text style={miStyles.qty}>{item.cantidad} {item.uom_id[1]}</Text>
+    <View style={usadoStyles.row}>
+      <View style={usadoStyles.info}>
+        <Text style={usadoStyles.name} numberOfLines={1}>{item.product_id[1]}</Text>
+        <Text style={usadoStyles.qty}>{item.cantidad} {item.uom_id[1]}</Text>
       </View>
-      <TouchableOpacity onPress={handleDelete} style={miStyles.deleteBtn} disabled={deleting}>
+      <TouchableOpacity onPress={handleDelete} style={usadoStyles.deleteBtn} disabled={deleting}>
         {deleting
           ? <ActivityIndicator color={Colors.danger} size="small" />
-          : <Text style={miStyles.deleteIcon}>🗑</Text>
+          : <Text style={usadoStyles.deleteIcon}>🗑</Text>
         }
       </TouchableOpacity>
     </View>
   );
 }
 
-const miStyles = StyleSheet.create({
+const usadoStyles = StyleSheet.create({
   row: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: 'row', alignItems: 'center',
     backgroundColor: Colors.surface,
-    borderRadius: Radius.md,
-    padding: Spacing.md,
-    marginBottom: Spacing.sm,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    ...Shadow.sm,
+    borderRadius: Radius.md, padding: Spacing.md,
+    marginBottom: Spacing.sm, borderWidth: 1,
+    borderColor: Colors.border, ...Shadow.sm,
   },
   info: { flex: 1 },
   name: { color: Colors.textPrimary, fontSize: Typography.sizes.md, fontWeight: Typography.weights.medium },
@@ -66,18 +60,70 @@ const miStyles = StyleSheet.create({
   deleteIcon: { fontSize: 18 },
 });
 
+// ─── Item: Materiales a pedir ─────────────────────────────────────
+function MaterialItemAPedir({ item, onDelete }: { item: Material; onDelete: () => void }) {
+  const [deleting, setDeleting] = useState(false);
+
+  const handleDelete = () => {
+    Alert.alert('Eliminar material', `¿Eliminar "${item.product_id[1]}" de la lista a pedir?`, [
+      { text: 'Cancelar', style: 'cancel' },
+      {
+        text: 'Eliminar', style: 'destructive',
+        onPress: async () => { setDeleting(true); await onDelete(); },
+      },
+    ]);
+  };
+
+  return (
+    <View style={pedirStyles.row}>
+      <View style={pedirStyles.indicator} />
+      <View style={pedirStyles.info}>
+        <Text style={pedirStyles.name} numberOfLines={1}>{item.product_id[1]}</Text>
+        <Text style={pedirStyles.qty}>{item.cantidad} {item.uom_id[1]}</Text>
+      </View>
+      <TouchableOpacity onPress={handleDelete} style={pedirStyles.deleteBtn} disabled={deleting}>
+        {deleting
+          ? <ActivityIndicator color={Colors.warning} size="small" />
+          : <Text style={pedirStyles.deleteIcon}>🗑</Text>
+        }
+      </TouchableOpacity>
+    </View>
+  );
+}
+
+const pedirStyles = StyleSheet.create({
+  row: {
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: Colors.warning + '18',
+    borderRadius: Radius.md, padding: Spacing.md,
+    marginBottom: Spacing.sm, borderWidth: 1,
+    borderColor: Colors.warning + '55', ...Shadow.sm,
+  },
+  indicator: {
+    width: 4, alignSelf: 'stretch',
+    backgroundColor: Colors.warning,
+    borderRadius: 2, marginRight: Spacing.sm,
+  },
+  info: { flex: 1 },
+  name: { color: Colors.textPrimary, fontSize: Typography.sizes.md, fontWeight: Typography.weights.medium },
+  qty: { color: Colors.warning, fontSize: Typography.sizes.sm, marginTop: 2, fontWeight: Typography.weights.semibold },
+  deleteBtn: { padding: Spacing.sm },
+  deleteIcon: { fontSize: 18 },
+});
+
 // ─── Pantalla principal ───────────────────────────────────────────
 export default function MaterialesScreen() {
-  const { id, modo } = useLocalSearchParams<{ id: string; modo?: string }>();
+  const { id, estado } = useLocalSearchParams<{ id: string; estado?: string }>();
   const actividadId = Number(id);
-  const soloUsados = modo === 'enCurso';
 
-  // Búsqueda
-  const [query, setQuery] = useState('');
+  const [activeTab, setActiveTab] = useState<Tab>(estado === 'enCurso' ? 'aPedir' : 'usados');
+
+  // Búsqueda — una por pestaña
+  const [queryUsados, setQueryUsados] = useState('');
   const [queryPedir, setQueryPedir] = useState('');
-  const [resultados, setResultados] = useState<Producto[]>([]);
+  const [resultadosUsados, setResultadosUsados] = useState<Producto[]>([]);
   const [resultadosPedir, setResultadosPedir] = useState<Producto[]>([]);
-  const [searching, setSearching] = useState(false);
+  const [searchingUsados, setSearchingUsados] = useState(false);
   const [searchingPedir, setSearchingPedir] = useState(false);
 
   // Materiales guardados
@@ -93,19 +139,17 @@ export default function MaterialesScreen() {
   const [isForPedir, setIsForPedir] = useState(false);
 
   const [error, setError] = useState('');
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-  const debounceRefPedir = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const debounceUsados = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const debouncePedir = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
-  // Cargar listas al montar
+  // ── Carga de datos ───────────────────────────────────────────────
   const loadMateriales = useCallback(async () => {
     try {
       setLoadingList(true);
-      const [usados, pedir] = await Promise.all([
-        getMaterialesByActividad(actividadId, false),
-        getMaterialesByActividad(actividadId, true),
-      ]);
+      setError('');
+      const { usados, aPedir } = await getAllMaterialesByActividad(actividadId);
       setMateriales(usados);
-      setMaterialesPedir(pedir);
+      setMaterialesPedir(aPedir);
     } catch (e: any) {
       setError(e.message);
     } finally {
@@ -115,41 +159,43 @@ export default function MaterialesScreen() {
 
   useEffect(() => { loadMateriales(); }, [loadMateriales]);
 
-  // Debounce búsqueda usados
+  // ── Debounce búsqueda pestaña Usados ────────────────────────────
   useEffect(() => {
-    clearTimeout(debounceRef.current);
-    if (!query.trim()) { setResultados([]); return; }
-    debounceRef.current = setTimeout(async () => {
-      setSearching(true);
-      const r = await searchProductos(query);
-      setResultados(r);
-      setSearching(false);
+    clearTimeout(debounceUsados.current);
+    if (!queryUsados.trim()) { setResultadosUsados([]); return; }
+    debounceUsados.current = setTimeout(async () => {
+      setSearchingUsados(true);
+      const r = await searchProductos(queryUsados);
+      setResultadosUsados(r);
+      setSearchingUsados(false);
     }, 300);
-    return () => clearTimeout(debounceRef.current);
-  }, [query]);
+    return () => clearTimeout(debounceUsados.current);
+  }, [queryUsados]);
 
-  // Debounce búsqueda a pedir
+  // ── Debounce búsqueda pestaña A Pedir ───────────────────────────
   useEffect(() => {
-    clearTimeout(debounceRefPedir.current);
+    clearTimeout(debouncePedir.current);
     if (!queryPedir.trim()) { setResultadosPedir([]); return; }
-    debounceRefPedir.current = setTimeout(async () => {
+    debouncePedir.current = setTimeout(async () => {
       setSearchingPedir(true);
       const r = await searchProductos(queryPedir);
       setResultadosPedir(r);
       setSearchingPedir(false);
     }, 300);
-    return () => clearTimeout(debounceRefPedir.current);
+    return () => clearTimeout(debouncePedir.current);
   }, [queryPedir]);
 
+  // ── Abrir modal ──────────────────────────────────────────────────
   const openModal = (product: Producto, forPedir: boolean) => {
     setSelectedProduct(product);
     setCantidad('1');
     setIsForPedir(forPedir);
     setModalVisible(true);
     if (forPedir) { setQueryPedir(''); setResultadosPedir([]); }
-    else { setQuery(''); setResultados([]); }
+    else { setQueryUsados(''); setResultadosUsados([]); }
   };
 
+  // ── Guardar ──────────────────────────────────────────────────────
   const handleSave = async () => {
     if (!selectedProduct) return;
     const qty = parseFloat(cantidad.replace(',', '.'));
@@ -159,9 +205,14 @@ export default function MaterialesScreen() {
     }
     setSaving(true);
     try {
-      await addMaterial(actividadId, selectedProduct, qty, isForPedir);
+      const nuevo = await addMaterial(actividadId, selectedProduct, qty, isForPedir);
       setModalVisible(false);
-      await loadMateriales();
+      // Actualizar la lista local correctamente sin recargar todo
+      if (isForPedir) {
+        setMaterialesPedir((prev) => [...prev, nuevo]);
+      } else {
+        setMateriales((prev) => [...prev, nuevo]);
+      }
     } catch (e: any) {
       Alert.alert('Error', e.message);
     } finally {
@@ -169,8 +220,9 @@ export default function MaterialesScreen() {
     }
   };
 
+  // ── Eliminar ─────────────────────────────────────────────────────
   const handleDelete = async (materialId: number, forPedir: boolean) => {
-    await deleteMaterial(materialId);
+    await deleteMaterial(materialId, forPedir);
     if (forPedir) {
       setMaterialesPedir((prev) => prev.filter((m) => m.id !== materialId));
     } else {
@@ -178,42 +230,73 @@ export default function MaterialesScreen() {
     }
   };
 
+  // ── Render ───────────────────────────────────────────────────────
   return (
     <SafeAreaView style={styles.safe} edges={['bottom']}>
-      <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
-        {!!error && <ErrorBanner message={error} onRetry={loadMateriales} />}
 
-        {/* --- Sección: Materiales utilizados --- */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionEmoji}>🔩</Text>
-            <Text style={styles.sectionTitle}>Materiales utilizados</Text>
-            <View style={styles.countBadge}>
-              <Text style={styles.countText}>{materiales.length}</Text>
+      {/* ── Tabs ──────────────────────────────────────────────── */}
+      <View style={styles.tabBar}>
+        {estado !== 'enCurso' && (
+          <TouchableOpacity
+            style={[styles.tab, activeTab === 'usados' && styles.tabActive]}
+            onPress={() => setActiveTab('usados')}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.tabEmoji}>🔩</Text>
+            <Text style={[styles.tabLabel, activeTab === 'usados' && styles.tabLabelActive]}>
+              Utilizados
+            </Text>
+            <View style={[styles.tabBadge, activeTab === 'usados' && styles.tabBadgeActive]}>
+              <Text style={[styles.tabBadgeText, activeTab === 'usados' && styles.tabBadgeTextActive]}>
+                {materiales.length}
+              </Text>
             </View>
-          </View>
+          </TouchableOpacity>
+        )}
 
+        <TouchableOpacity
+          style={[styles.tab, activeTab === 'aPedir' && styles.tabActivePedir]}
+          onPress={() => setActiveTab('aPedir')}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.tabEmoji}>🛒</Text>
+          <Text style={[styles.tabLabel, activeTab === 'aPedir' && styles.tabLabelActivePedir]}>
+            A pedir
+          </Text>
+          <View style={[styles.tabBadge, activeTab === 'aPedir' && styles.tabBadgeActivePedir]}>
+            <Text style={[styles.tabBadgeText, activeTab === 'aPedir' && styles.tabBadgeTextActivePedir]}>
+              {materialesPedir.length}
+            </Text>
+          </View>
+        </TouchableOpacity>
+      </View>
+
+      {!!error && <ErrorBanner message={error} onRetry={loadMateriales} />}
+
+      {/* ── Contenido pestaña Utilizados ─────────────────────── */}
+      {activeTab === 'usados' && (
+        <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
           <View style={styles.searchContainer}>
             <Text style={styles.searchIcon}>🔍</Text>
             <TextInput
-              style={[styles.searchInput, { fontSize: 16 }]}
-              value={query}
-              onChangeText={setQuery}
-              placeholder="Buscar producto…"
+              style={styles.searchInput}
+              value={queryUsados}
+              onChangeText={setQueryUsados}
+              placeholder="Buscar y añadir producto…"
               placeholderTextColor={Colors.textMuted}
               returnKeyType="search"
             />
-            {searching && <ActivityIndicator color={Colors.primary} size="small" />}
-            {query.length > 0 && !searching && (
-              <TouchableOpacity onPress={() => setQuery('')}>
+            {searchingUsados && <ActivityIndicator color={Colors.primary} size="small" />}
+            {queryUsados.length > 0 && !searchingUsados && (
+              <TouchableOpacity onPress={() => setQueryUsados('')}>
                 <Text style={styles.clearBtn}>✕</Text>
               </TouchableOpacity>
             )}
           </View>
 
-          {resultados.length > 0 && (
+          {resultadosUsados.length > 0 && (
             <View style={styles.dropdown}>
-              {resultados.map((p: Producto) => (
+              {resultadosUsados.map((p: Producto) => (
                 <TouchableOpacity key={p.id} style={styles.dropdownItem} onPress={() => openModal(p, false)}>
                   <Text style={styles.dropdownName}>{p.name}</Text>
                   <Text style={styles.dropdownUom}>{p.uom_id[1]}</Text>
@@ -223,83 +306,82 @@ export default function MaterialesScreen() {
           )}
 
           {loadingList ? (
-            <ActivityIndicator color={Colors.primary} style={{ marginTop: 12 }} />
+            <ActivityIndicator color={Colors.primary} style={{ marginTop: 24 }} />
           ) : materiales.length === 0 ? (
-            <Text style={styles.emptyList}>Sin materiales añadidos</Text>
+            <View style={styles.emptyContainer}>
+              <Text style={styles.emptyEmoji}>🔩</Text>
+              <Text style={styles.emptyTitle}>Sin materiales utilizados</Text>
+              <Text style={styles.emptySubtitle}>Busca un producto arriba para añadirlo</Text>
+            </View>
           ) : (
             materiales.map((m: Material) => (
-              <MaterialItem key={m.id} item={m} onDelete={() => handleDelete(m.id, false)} />
+              <MaterialItemUsado key={m.id} item={m} onDelete={() => handleDelete(m.id, false)} />
             ))
           )}
-        </View>
+        </ScrollView>
+      )}
 
-        {/* --- Sección: Materiales a pedir (solo si la actividad está finalizada) --- */}
-        {!soloUsados && (
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionEmoji}>🛒</Text>
-              <Text style={styles.sectionTitle}>Materiales a pedir</Text>
-              <View style={styles.countBadge}>
-                <Text style={styles.countText}>{materialesPedir.length}</Text>
-              </View>
-            </View>
-
-            <View style={styles.searchContainer}>
-              <Text style={styles.searchIcon}>🔍</Text>
-              <TextInput
-                style={[styles.searchInput, { fontSize: 16 }]}
-                value={queryPedir}
-                onChangeText={setQueryPedir}
-                placeholder="Buscar producto…"
-                placeholderTextColor={Colors.textMuted}
-                returnKeyType="search"
-              />
-              {searchingPedir && <ActivityIndicator color={Colors.primary} size="small" />}
-              {queryPedir.length > 0 && !searchingPedir && (
-                <TouchableOpacity onPress={() => setQueryPedir('')}>
-                  <Text style={styles.clearBtn}>✕</Text>
-                </TouchableOpacity>
-              )}
-            </View>
-
-            {resultadosPedir.length > 0 && (
-              <View style={styles.dropdown}>
-                {resultadosPedir.map((p: Producto) => (
-                  <TouchableOpacity key={p.id} style={styles.dropdownItem} onPress={() => openModal(p, true)}>
-                    <Text style={styles.dropdownName}>{p.name}</Text>
-                    <Text style={styles.dropdownUom}>{p.uom_id[1]}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            )}
-
-            {loadingList ? (
-              <ActivityIndicator color={Colors.primary} style={{ marginTop: 12 }} />
-            ) : materialesPedir.length === 0 ? (
-              <Text style={styles.emptyList}>Sin materiales a pedir</Text>
-            ) : (
-              materialesPedir.map((m: Material) => (
-                <MaterialItem key={m.id} item={m} onDelete={() => handleDelete(m.id, true)} />
-              ))
+      {/* ── Contenido pestaña A Pedir ────────────────────────── */}
+      {activeTab === 'aPedir' && (
+        <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
+          <View style={[styles.searchContainer, styles.searchContainerPedir]}>
+            <Text style={styles.searchIcon}>🔍</Text>
+            <TextInput
+              style={styles.searchInput}
+              value={queryPedir}
+              onChangeText={setQueryPedir}
+              placeholder="Buscar y añadir producto…"
+              placeholderTextColor={Colors.textMuted}
+              returnKeyType="search"
+            />
+            {searchingPedir && <ActivityIndicator color={Colors.warning} size="small" />}
+            {queryPedir.length > 0 && !searchingPedir && (
+              <TouchableOpacity onPress={() => setQueryPedir('')}>
+                <Text style={styles.clearBtn}>✕</Text>
+              </TouchableOpacity>
             )}
           </View>
-        )}
 
-      </ScrollView>
+          {resultadosPedir.length > 0 && (
+            <View style={styles.dropdown}>
+              {resultadosPedir.map((p: Producto) => (
+                <TouchableOpacity key={p.id} style={styles.dropdownItem} onPress={() => openModal(p, true)}>
+                  <Text style={styles.dropdownName}>{p.name}</Text>
+                  <Text style={styles.dropdownUom}>{p.uom_id[1]}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
 
-      {/* Modal de cantidad */}
+          {loadingList ? (
+            <ActivityIndicator color={Colors.warning} style={{ marginTop: 24 }} />
+          ) : materialesPedir.length === 0 ? (
+            <View style={styles.emptyContainer}>
+              <Text style={styles.emptyEmoji}>🛒</Text>
+              <Text style={styles.emptyTitle}>Sin materiales a pedir</Text>
+              <Text style={styles.emptySubtitle}>Busca un producto arriba para añadirlo a la lista</Text>
+            </View>
+          ) : (
+            materialesPedir.map((m: Material) => (
+              <MaterialItemAPedir key={m.id} item={m} onDelete={() => handleDelete(m.id, true)} />
+            ))
+          )}
+        </ScrollView>
+      )}
+
+      {/* ── Modal cantidad ───────────────────────────────────── */}
       <Modal visible={modalVisible} transparent animationType="slide">
         <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
+          <View style={[styles.modalCard, isForPedir && styles.modalCardPedir]}>
             <Text style={styles.modalTitle}>
-              {isForPedir ? '🛒 Añadir a pedir' : '🔩 Añadir material'}
+              {isForPedir ? '🛒 Añadir a pedir' : '🔩 Añadir material utilizado'}
             </Text>
             <Text style={styles.modalProduct}>{selectedProduct?.name}</Text>
             <Text style={styles.modalUom}>Unidad: {selectedProduct?.uom_id[1]}</Text>
 
             <Text style={styles.modalLabel}>Cantidad</Text>
             <TextInput
-              style={styles.modalInput}
+              style={[styles.modalInput, isForPedir && styles.modalInputPedir]}
               value={cantidad}
               onChangeText={setCantidad}
               keyboardType="decimal-pad"
@@ -309,14 +391,11 @@ export default function MaterialesScreen() {
             />
 
             <View style={styles.modalActions}>
-              <TouchableOpacity
-                style={styles.modalCancel}
-                onPress={() => setModalVisible(false)}
-              >
+              <TouchableOpacity style={styles.modalCancel} onPress={() => setModalVisible(false)}>
                 <Text style={styles.modalCancelText}>Cancelar</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.modalConfirm, saving && { opacity: 0.6 }]}
+                style={[styles.modalConfirm, isForPedir && styles.modalConfirmPedir, saving && { opacity: 0.6 }]}
                 onPress={handleSave}
                 disabled={saving}
               >
@@ -337,57 +416,108 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: Colors.background },
   scroll: { padding: Spacing.lg, paddingBottom: Spacing.xxxl },
 
-  section: { marginBottom: Spacing.xxl },
-  sectionHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: Spacing.md, gap: Spacing.sm },
-  sectionEmoji: { fontSize: 20 },
-  sectionTitle: { color: Colors.textPrimary, fontSize: Typography.sizes.lg, fontWeight: Typography.weights.bold, flex: 1 },
-  countBadge: {
-    backgroundColor: Colors.primary, borderRadius: Radius.full,
-    minWidth: 24, height: 24, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 6,
-  },
-  countText: { color: '#fff', fontSize: 12, fontWeight: '700' },
-
-  searchContainer: {
+  // ── Tabs ──────────────────────────────────────────────────────────
+  tabBar: {
     flexDirection: 'row',
-    alignItems: 'center',
     backgroundColor: Colors.surface,
-    borderRadius: Radius.md,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    paddingHorizontal: Spacing.md,
-    marginBottom: Spacing.sm,
-    gap: Spacing.sm,
-  },
-  searchIcon: { fontSize: 16 },
-  searchInput: { flex: 1, color: Colors.textPrimary, paddingVertical: Spacing.md },
-  clearBtn: { color: Colors.textMuted, fontSize: 16, padding: 4 },
-
-  dropdown: {
-    backgroundColor: Colors.surfaceElevated,
-    borderRadius: Radius.md,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    marginBottom: Spacing.md,
-    overflow: 'hidden',
-  },
-  dropdownItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: Spacing.md,
     borderBottomWidth: 1,
     borderBottomColor: Colors.border,
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.sm,
+  },
+  tab: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.xs,
+    paddingVertical: Spacing.md,
+    borderBottomWidth: 3,
+    borderBottomColor: 'transparent',
+  },
+  tabActive: {
+    borderBottomColor: Colors.primary,
+  },
+  tabActivePedir: {
+    borderBottomColor: Colors.warning,
+  },
+  tabEmoji: { fontSize: 16 },
+  tabLabel: {
+    color: Colors.textMuted,
+    fontSize: Typography.sizes.md,
+    fontWeight: Typography.weights.medium,
+  },
+  tabLabelActive: {
+    color: Colors.primary,
+    fontWeight: Typography.weights.bold,
+  },
+  tabLabelActivePedir: {
+    color: Colors.warning,
+    fontWeight: Typography.weights.bold,
+  },
+  tabBadge: {
+    backgroundColor: Colors.surfaceElevated,
+    borderRadius: Radius.full,
+    minWidth: 22, height: 22,
+    justifyContent: 'center', alignItems: 'center',
+    paddingHorizontal: 5,
+  },
+  tabBadgeActive: { backgroundColor: Colors.primary },
+  tabBadgeActivePedir: { backgroundColor: Colors.warning },
+  tabBadgeText: { color: Colors.textMuted, fontSize: 11, fontWeight: '700' },
+  tabBadgeTextActive: { color: '#fff' },
+  tabBadgeTextActivePedir: { color: '#fff' },
+
+  // ── Búsqueda ──────────────────────────────────────────────────────
+  searchContainer: {
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: Colors.surface,
+    borderRadius: Radius.md, borderWidth: 1,
+    borderColor: Colors.border,
+    paddingHorizontal: Spacing.md,
+    marginBottom: Spacing.sm, gap: Spacing.sm,
+  },
+  searchContainerPedir: {
+    borderColor: Colors.warning + '80',
+  },
+  searchIcon: { fontSize: 16 },
+  searchInput: { flex: 1, color: Colors.textPrimary, paddingVertical: Spacing.md, fontSize: 16 },
+  clearBtn: { color: Colors.textMuted, fontSize: 16, padding: 4 },
+
+  // ── Dropdown ──────────────────────────────────────────────────────
+  dropdown: {
+    backgroundColor: Colors.surfaceElevated,
+    borderRadius: Radius.md, borderWidth: 1,
+    borderColor: Colors.border,
+    marginBottom: Spacing.md, overflow: 'hidden',
+  },
+  dropdownItem: {
+    flexDirection: 'row', justifyContent: 'space-between',
+    alignItems: 'center', padding: Spacing.md,
+    borderBottomWidth: 1, borderBottomColor: Colors.border,
   },
   dropdownName: { color: Colors.textPrimary, fontSize: Typography.sizes.md, flex: 1 },
   dropdownUom: { color: Colors.textMuted, fontSize: Typography.sizes.sm },
 
-  emptyList: {
-    color: Colors.textMuted, fontSize: Typography.sizes.sm, textAlign: 'center',
-    paddingVertical: Spacing.xl, borderWidth: 1, borderColor: Colors.border,
-    borderRadius: Radius.md, borderStyle: 'dashed',
+  // ── Empty state ───────────────────────────────────────────────────
+  emptyContainer: {
+    alignItems: 'center', paddingVertical: Spacing.xxxl,
+    gap: Spacing.sm,
+  },
+  emptyEmoji: { fontSize: 40 },
+  emptyTitle: {
+    color: Colors.textSecondary,
+    fontSize: Typography.sizes.lg,
+    fontWeight: Typography.weights.semibold,
+  },
+  emptySubtitle: {
+    color: Colors.textMuted,
+    fontSize: Typography.sizes.sm,
+    textAlign: 'center',
+    paddingHorizontal: Spacing.xl,
   },
 
-  // Modal
+  // ── Modal ─────────────────────────────────────────────────────────
   modalOverlay: {
     flex: 1, backgroundColor: 'rgba(0,0,0,0.7)',
     justifyContent: 'flex-end',
@@ -400,22 +530,33 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: Colors.border,
   },
-  modalTitle: { color: Colors.textPrimary, fontSize: Typography.sizes.xl, fontWeight: Typography.weights.bold, marginBottom: Spacing.sm },
-  modalProduct: { color: Colors.textPrimary, fontSize: Typography.sizes.lg, fontWeight: Typography.weights.medium },
+  modalCardPedir: {
+    borderTopColor: Colors.warning + '80',
+  },
+  modalTitle: {
+    color: Colors.textPrimary,
+    fontSize: Typography.sizes.xl,
+    fontWeight: Typography.weights.bold,
+    marginBottom: Spacing.sm,
+  },
+  modalProduct: {
+    color: Colors.textPrimary,
+    fontSize: Typography.sizes.lg,
+    fontWeight: Typography.weights.medium,
+  },
   modalUom: { color: Colors.textMuted, fontSize: Typography.sizes.sm, marginBottom: Spacing.lg },
   modalLabel: { color: Colors.textSecondary, fontSize: Typography.sizes.sm, marginBottom: Spacing.xs },
   modalInput: {
     backgroundColor: Colors.surfaceElevated,
-    borderWidth: 1,
-    borderColor: Colors.border,
+    borderWidth: 1, borderColor: Colors.border,
     borderRadius: Radius.md,
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.lg, paddingVertical: Spacing.md,
     color: Colors.textPrimary,
-    fontSize: 24,
-    fontWeight: Typography.weights.bold,
-    marginBottom: Spacing.xl,
-    textAlign: 'center',
+    fontSize: 24, fontWeight: Typography.weights.bold,
+    marginBottom: Spacing.xl, textAlign: 'center',
+  },
+  modalInputPedir: {
+    borderColor: Colors.warning + '80',
   },
   modalActions: { flexDirection: 'row', gap: Spacing.md },
   modalCancel: {
@@ -428,6 +569,9 @@ const styles = StyleSheet.create({
     flex: 1, backgroundColor: Colors.primary,
     borderRadius: Radius.md, paddingVertical: Spacing.md,
     alignItems: 'center',
+  },
+  modalConfirmPedir: {
+    backgroundColor: Colors.warning,
   },
   modalConfirmText: { color: '#fff', fontWeight: Typography.weights.bold },
 });

@@ -80,7 +80,7 @@ export default function ActividadDetailScreen() {
     setActing(true);
     try {
       await finalizarActividad(actividad.id);
-      router.replace(`/actividad/materiales/${actividad.id}?modo=enCurso`);
+      router.replace(`/actividad/materiales/${actividad.id}?estado=finalizada`);
     } catch (e: any) {
       setError(e.message || 'Error al finalizar la actividad');
     } finally {
@@ -161,27 +161,29 @@ export default function ActividadDetailScreen() {
 
       <View style={styles.footer}>
         {pendiente && (
-          <TouchableOpacity
-            style={[styles.actionBtn, styles.btnSuccess, acting && styles.btnOpaco]}
-            onPress={handleIniciar}
-            disabled={acting}
-            activeOpacity={0.85}
-          >
-            {acting
-              ? <ActivityIndicator color="#fff" size="small" />
-              : <>
-                  <Text style={styles.actionBtnIcon}>▶</Text>
-                  <Text style={styles.actionBtnText}>Iniciar Actividad</Text>
-                </>
-            }
-          </TouchableOpacity>
+          <View style={styles.enCursoContainer}>
+            <TouchableOpacity
+              style={[styles.actionBtn, styles.btnSuccess, acting && styles.btnOpaco, { flex: 2 }]}
+              onPress={handleIniciar}
+              disabled={acting}
+              activeOpacity={0.85}
+            >
+              {acting
+                ? <ActivityIndicator color="#fff" size="small" />
+                : <>
+                    <Text style={styles.actionBtnIcon}>▶</Text>
+                    <Text style={styles.actionBtnText}>Iniciar Actividad</Text>
+                  </>
+              }
+            </TouchableOpacity>
+          </View>
         )}
 
         {enCurso && (
           <View style={styles.enCursoContainer}>
             <TouchableOpacity
               style={styles.actionBtnMaterialesSecundario}
-              onPress={() => router.push(`/actividad/materiales/${actividad.id}?modo=enCurso`)}
+              onPress={() => router.push(`/actividad/materiales/${actividad.id}?estado=enCurso`)}
               activeOpacity={0.85}
             >
               <Text style={styles.actionBtnTextSecondary}>📦 Materiales</Text>
@@ -207,7 +209,7 @@ export default function ActividadDetailScreen() {
         {finalizada && (
           <TouchableOpacity
             style={[styles.actionBtn, styles.btnPrimary]}
-            onPress={() => router.push(`/actividad/materiales/${actividad.id}?modo=enCurso`)}
+            onPress={() => router.push(`/actividad/materiales/${actividad.id}?estado=finalizada`)}
             activeOpacity={0.85}
           >
             <Text style={styles.actionBtnIcon}>📦</Text>

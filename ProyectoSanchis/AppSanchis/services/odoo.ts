@@ -40,7 +40,7 @@ export async function callKw(
   args: any[],
   kwargs: Record<string, any> = {}
 ): Promise<any> {
-  const response = await axiosInstance.post('/web/dataset/call_kw', {
+  const response = await axiosInstance.post(`/web/dataset/call_kw/${model}/${method}`, {
     jsonrpc: '2.0',
     method: 'call',
     id: Date.now(),
