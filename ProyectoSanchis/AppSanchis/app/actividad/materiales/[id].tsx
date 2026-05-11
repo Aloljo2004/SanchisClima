@@ -4,7 +4,7 @@ import {
   TouchableOpacity, ActivityIndicator, Modal, Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, Stack, useRouter } from 'expo-router';
 import {
   searchProductos, getAllMaterialesByActividad,
   addMaterial, deleteMaterial,
@@ -114,6 +114,7 @@ const pedirStyles = StyleSheet.create({
 // ─── Pantalla principal ───────────────────────────────────────────
 export default function MaterialesScreen() {
   const { id, estado } = useLocalSearchParams<{ id: string; estado?: string }>();
+  const router = useRouter();
   const actividadId = Number(id);
 
   const [activeTab, setActiveTab] = useState<Tab>(estado === 'enCurso' ? 'aPedir' : 'usados');
@@ -233,26 +234,38 @@ export default function MaterialesScreen() {
   // ── Render ───────────────────────────────────────────────────────
   return (
     <SafeAreaView style={styles.safe} edges={['bottom']}>
+      <Stack.Screen
+        options={{
+          headerLeft: estado === 'finalizada' ? () => null : undefined,
+          headerRight: estado === 'finalizada' ? () => (
+            <TouchableOpacity
+              onPress={() => router.replace('/dashboard')}
+              style={styles.headerBtnFinalizar}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.headerBtnFinalizarText}>Finalizar</Text>
+            </TouchableOpacity>
+          ) : undefined,
+        }}
+      />
 
       {/* ── Tabs ──────────────────────────────────────────────── */}
       <View style={styles.tabBar}>
-        {estado !== 'enCurso' && (
-          <TouchableOpacity
-            style={[styles.tab, activeTab === 'usados' && styles.tabActive]}
-            onPress={() => setActiveTab('usados')}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.tabEmoji}>🔩</Text>
-            <Text style={[styles.tabLabel, activeTab === 'usados' && styles.tabLabelActive]}>
-              Utilizados
+        <TouchableOpacity
+          style={[styles.tab, activeTab === 'usados' && styles.tabActive]}
+          onPress={() => setActiveTab('usados')}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.tabEmoji}>🔩</Text>
+          <Text style={[styles.tabLabel, activeTab === 'usados' && styles.tabLabelActive]}>
+            Utilizados
+          </Text>
+          <View style={[styles.tabBadge, activeTab === 'usados' && styles.tabBadgeActive]}>
+            <Text style={[styles.tabBadgeText, activeTab === 'usados' && styles.tabBadgeTextActive]}>
+              {materiales.length}
             </Text>
-            <View style={[styles.tabBadge, activeTab === 'usados' && styles.tabBadgeActive]}>
-              <Text style={[styles.tabBadgeText, activeTab === 'usados' && styles.tabBadgeTextActive]}>
-                {materiales.length}
-              </Text>
-            </View>
-          </TouchableOpacity>
-        )}
+          </View>
+        </TouchableOpacity>
 
         <TouchableOpacity
           style={[styles.tab, activeTab === 'aPedir' && styles.tabActivePedir]}
@@ -261,7 +274,7 @@ export default function MaterialesScreen() {
         >
           <Text style={styles.tabEmoji}>🛒</Text>
           <Text style={[styles.tabLabel, activeTab === 'aPedir' && styles.tabLabelActivePedir]}>
-            A pedir
+            Restantes
           </Text>
           <View style={[styles.tabBadge, activeTab === 'aPedir' && styles.tabBadgeActivePedir]}>
             <Text style={[styles.tabBadgeText, activeTab === 'aPedir' && styles.tabBadgeTextActivePedir]}>
@@ -358,7 +371,7 @@ export default function MaterialesScreen() {
           ) : materialesPedir.length === 0 ? (
             <View style={styles.emptyContainer}>
               <Text style={styles.emptyEmoji}>🛒</Text>
-              <Text style={styles.emptyTitle}>Sin materiales a pedir</Text>
+              <Text style={styles.emptyTitle}>Sin materiales restantes</Text>
               <Text style={styles.emptySubtitle}>Busca un producto arriba para añadirlo a la lista</Text>
             </View>
           ) : (
@@ -374,7 +387,7 @@ export default function MaterialesScreen() {
         <View style={styles.modalOverlay}>
           <View style={[styles.modalCard, isForPedir && styles.modalCardPedir]}>
             <Text style={styles.modalTitle}>
-              {isForPedir ? '🛒 Añadir a pedir' : '🔩 Añadir material utilizado'}
+              {isForPedir ? '🛒 Añadir restantes' : '🔩 Añadir material utilizado'}
             </Text>
             <Text style={styles.modalProduct}>{selectedProduct?.name}</Text>
             <Text style={styles.modalUom}>Unidad: {selectedProduct?.uom_id[1]}</Text>
@@ -574,4 +587,17 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.warning,
   },
   modalConfirmText: { color: '#fff', fontWeight: Typography.weights.bold },
+  
+  headerBtnFinalizar: {
+    backgroundColor: Colors.danger,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.sm,
+    borderRadius: Radius.md,
+    marginRight: Spacing.sm,
+  },
+  headerBtnFinalizarText: {
+    color: '#fff',
+    fontWeight: Typography.weights.bold,
+    fontSize: Typography.sizes.md,
+  },
 });

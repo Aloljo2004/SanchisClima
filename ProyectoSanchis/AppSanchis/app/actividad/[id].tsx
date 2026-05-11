@@ -6,7 +6,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { getActividadEnriquecidaById } from '../../services/partes';
-import { iniciarActividad, finalizarActividad } from '../../services/actividades';
+import { iniciarActividad, finalizarActividad, pausarActividad } from '../../services/actividades';
+import { useAuthStore } from '../../store/authStore';
 import type { ActividadEnriquecida } from '../../services/partes';
 import ErrorBanner from '../../components/ErrorBanner';
 import { Colors, Typography, Spacing, Radius, Shadow } from '../../constants/theme';
@@ -37,6 +38,7 @@ function formatDateTime(str?: string | false | null, fallback = 'Pendiente') {
 export default function ActividadDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const { uid } = useAuthStore();
 
   const [actividad, setActividad] = useState<ActividadEnriquecida | null>(null);
   const [loading, setLoading] = useState(true);
@@ -66,7 +68,7 @@ export default function ActividadDetailScreen() {
     try {
       // Nota: getActividadEnriquecidaById devuelve parte_id como [id, nombre], así que si necesitamos el ID numérico
       const parteId = Array.isArray(actividad.parte_id) ? actividad.parte_id[0] : (actividad.parte_id as any);
-      await iniciarActividad(actividad.id, parteId);
+      await iniciarActividad(actividad.id, parteId, uid || 0);
       await loadData();
     } catch (e: any) {
       setError(e.message || 'Error al iniciar la actividad');
@@ -79,10 +81,23 @@ export default function ActividadDetailScreen() {
     if (!actividad) return;
     setActing(true);
     try {
-      await finalizarActividad(actividad.id);
+      await finalizarActividad(actividad.id, uid || 0);
       router.replace(`/actividad/materiales/${actividad.id}?estado=finalizada`);
     } catch (e: any) {
       setError(e.message || 'Error al finalizar la actividad');
+    } finally {
+      setActing(false);
+    }
+  };
+  
+  const handlePausar = async () => {
+    if (!actividad) return;
+    setActing(true);
+    try {
+      await pausarActividad(actividad.id);
+      router.replace('/dashboard');
+    } catch (e: any) {
+      setError(e.message || 'Error al pausar la actividad');
     } finally {
       setActing(false);
     }
@@ -101,8 +116,8 @@ export default function ActividadDetailScreen() {
     return <ErrorBanner message={error || 'No se encontró la actividad'} />;
   }
 
-  const enCurso = !!actividad.hora_inicio && !actividad.hora_fin;
   const finalizada = !!actividad.hora_fin;
+  const enCurso = !!actividad.hora_inicio && !actividad.hora_fin;
   const pendiente = !actividad.hora_inicio;
 
   const getStatusBadge = () => {
@@ -186,11 +201,23 @@ export default function ActividadDetailScreen() {
               onPress={() => router.push(`/actividad/materiales/${actividad.id}?estado=enCurso`)}
               activeOpacity={0.85}
             >
-              <Text style={styles.actionBtnTextSecondary}>📦 Materiales</Text>
+              <Text style={styles.actionBtnTextSecondary}>📦 Materiales Restantes</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[styles.actionBtn, styles.btnWarning, acting && styles.btnOpaco, { flex: 2 }]}
+              style={[styles.actionBtn, styles.btnSecondary, acting && styles.btnOpaco, { flex: 1 }]}
+              onPress={handlePausar}
+              disabled={acting}
+              activeOpacity={0.85}
+            >
+              {acting 
+                ? <ActivityIndicator color={Colors.textPrimary} size="small" />
+                : <Text style={styles.actionBtnIcon}>⏸</Text>
+              }
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.actionBtn, styles.btnWarning, acting && styles.btnOpaco, { flex: 1.5 }]}
               onPress={handleFinalizar}
               disabled={acting}
               activeOpacity={0.85}
@@ -225,7 +252,7 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: Colors.background },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 12 },
   loadingText: { color: Colors.textSecondary, fontSize: Typography.sizes.md },
-  scroll: { padding: Spacing.xl, paddingBottom: 120 },
+  scroll: { padding: Spacing.xl, paddingBottom: 140 },
 
   stateRow: { alignItems: 'flex-start', marginBottom: Spacing.lg },
   stateBadge: { paddingHorizontal: Spacing.md, paddingVertical: Spacing.xs, borderRadius: Radius.full },
@@ -261,7 +288,10 @@ const styles = StyleSheet.create({
 
   footer: {
     position: 'absolute', bottom: 0, left: 0, right: 0,
-    padding: Spacing.xl, backgroundColor: Colors.background,
+    paddingHorizontal: Spacing.xl,
+    paddingTop: Spacing.xl,
+    paddingBottom: Spacing.xxxl + 8, // Más espacio para evitar solapamiento con botones de Android
+    backgroundColor: Colors.background,
     borderTopWidth: 1, borderTopColor: Colors.border,
   },
   
@@ -281,18 +311,21 @@ const styles = StyleSheet.create({
   },
   
   actionBtnMaterialesSecundario: {
-    flex: 1,
+    flex: 2,
     backgroundColor: Colors.surface,
     borderWidth: 1,
     borderColor: Colors.primary,
     borderRadius: Radius.lg,
     alignItems: 'center',
     justifyContent: 'center',
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.sm,
   },
   
   btnSuccess: { backgroundColor: Colors.success },
   btnWarning: { backgroundColor: Colors.warning },
   btnPrimary: { backgroundColor: Colors.primary },
+  btnSecondary: { backgroundColor: Colors.surfaceElevated, borderWidth: 1, borderColor: Colors.border },
   btnOpaco: { opacity: 0.6 },
   
   actionBtnIcon: { color: '#fff', fontSize: 18 },

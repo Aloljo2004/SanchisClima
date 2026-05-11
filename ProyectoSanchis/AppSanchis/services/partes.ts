@@ -130,9 +130,9 @@ export async function getActividadesSinAsignar(): Promise<ActividadEnriquecida[]
 
   const actividades = actividadesRaw.map(mapActividad);
   
-  // Excluir partes finalizados
+  // Excluir partes finalizados y actividades ya finalizadas (con hora_fin)
   const enriquecidas = await enrichActividadesWithParte(actividades);
-  return enriquecidas.filter(a => a.parte_state !== 'finalizado');
+  return enriquecidas.filter(a => a.parte_state !== 'finalizado' && !a.hora_fin);
 }
 
 // ─── Histórico ────────────────────────────────────────────────────

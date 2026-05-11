@@ -11,6 +11,7 @@ import { setSessionId } from '../services/odoo';
 import {
   getActividadesHoy, getMisActividades, getActividadesSinAsignar, getActividadesHistorico,
 } from '../services/partes';
+import { iniciarActividad, pausarActividad, finalizarActividad } from '../services/actividades';
 import type { ActividadEnriquecida } from '../services/partes';
 import ActividadCard from '../components/ActividadCard';
 import { ListSkeleton } from '../components/LoadingSkeleton';
@@ -31,7 +32,16 @@ export default function DashboardScreen() {
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [actingId, setActingId] = useState<number | null>(null);
   const [error, setError] = useState('');
+
+  // Ordena actividades: las "en curso" (hora_inicio sin hora_fin) van primero
+  const sortEnCursoPrimero = (arr: ActividadEnriquecida[]) =>
+    [...arr].sort((a, b) => {
+      const aEnCurso = !!a.hora_inicio && !a.hora_fin ? 0 : 1;
+      const bEnCurso = !!b.hora_inicio && !b.hora_fin ? 0 : 1;
+      return aEnCurso - bEnCurso;
+    });
 
   const loadAll = useCallback(async () => {
     try {
@@ -41,9 +51,9 @@ export default function DashboardScreen() {
         getMisActividades(uid || 1),
         getActividadesSinAsignar(),
       ]);
-      setActividadesHoy(hoy);
-      setMisActividades(mis);
-      setSinAsignar(sin);
+      setActividadesHoy(sortEnCursoPrimero(hoy));
+      setMisActividades(sortEnCursoPrimero(mis));
+      setSinAsignar(sortEnCursoPrimero(sin));
 
       setHistoricoOffset(0);
       const hist = await getActividadesHistorico(0, 20);
@@ -111,6 +121,49 @@ export default function DashboardScreen() {
     ]);
   };
 
+  const handleIniciarActividad = async (actividad: ActividadEnriquecida) => {
+    setActingId(actividad.id);
+    try {
+      const parteId = Array.isArray(actividad.parte_id) ? actividad.parte_id[0] : (actividad.parte_id as any);
+      await iniciarActividad(actividad.id, parteId, uid || 0);
+      await loadAll();
+    } catch (e: any) {
+      Alert.alert('Error', e.message || 'No se pudo iniciar la actividad');
+    } finally {
+      setActingId(null);
+    }
+  };
+
+  const handlePausarActividad = async (actividad: ActividadEnriquecida) => {
+    setActingId(actividad.id);
+    try {
+      await pausarActividad(actividad.id);
+      await loadAll();
+    } catch (e: any) {
+      Alert.alert('Error', e.message || 'No se pudo pausar la actividad');
+    } finally {
+      setActingId(null);
+    }
+  };
+
+  const handleFinalizarActividad = async (actividad: ActividadEnriquecida) => {
+    setActingId(actividad.id);
+    try {
+      await finalizarActividad(actividad.id, uid || 0);
+      // Al finalizar, redirigimos a materiales como pidió el jefe
+      router.push(`/actividad/materiales/${actividad.id}?estado=finalizada`);
+    } catch (e: any) {
+      Alert.alert('Error', e.message || 'No se pudo finalizar la actividad');
+    } finally {
+      setActingId(null);
+    }
+  };
+
+  const handleMateriales = (actividad: ActividadEnriquecida) => {
+    const estado = actividad.hora_fin ? 'finalizada' : 'enCurso';
+    router.push(`/actividad/materiales/${actividad.id}?estado=${estado}`);
+  };
+
   const renderSection = (title: string, emoji: string, data: ActividadEnriquecida[], extra?: React.ReactNode) => (
     <View style={styles.section}>
       <View style={styles.sectionHeader}>
@@ -123,7 +176,16 @@ export default function DashboardScreen() {
       {data.length === 0
         ? <Text style={styles.empty}>Sin actividades en esta sección</Text>
         : data.map((a) => (
-            <ActividadCard key={a.id} actividad={a} onPress={() => handlePressActividad(a)} />
+            <ActividadCard 
+              key={a.id} 
+              actividad={a} 
+              onPress={() => handlePressActividad(a)}
+              onIniciar={handleIniciarActividad}
+              onPausar={handlePausarActividad}
+              onFinalizar={handleFinalizarActividad}
+              onMateriales={handleMateriales}
+              isActing={actingId === a.id}
+            />
           ))
       }
       {extra}

@@ -7,20 +7,51 @@ function nowOdooFormat(): string {
 }
 
 // ─── Iniciar actividad ────────────────────────────────────────────
-export async function iniciarActividad(actividadId: number, parteId: number): Promise<void> {
+export async function iniciarActividad(actividadId: number, parteId: number, uid: number): Promise<void> {
   const hora_inicio = nowOdooFormat();
 
-  // Escribir hora_inicio en jornada.actividad
-  await callKw('jornada.actividad', 'write', [[actividadId], { hora_inicio }]);
+  // Escribir hora_inicio en jornada.actividad y asignar al usuario si no está
+  await callKw('jornada.actividad', 'write', [[actividadId], { 
+    hora_inicio,
+    equipo_ids: [[4, uid]] // 4 = LINK (añadir a la relación si no existe)
+  }]);
 
   // Si el parte está en estado no_iniciado → ponerlo en_curso
   await callKw('jornada.proyecto', 'write', [[parteId], { state: 'en_curso' }]);
 }
 
-// ─── Finalizar actividad ──────────────────────────────────────────
-export async function finalizarActividad(actividadId: number): Promise<void> {
+// ─── Pausar actividad ─────────────────────────────────────────────
+export async function pausarActividad(actividadId: number): Promise<void> {
   const hora_fin = nowOdooFormat();
+  
+  // 1. Finalizar la actual (solo ponemos hora_fin, no movemos etapa de tarea)
   await callKw('jornada.actividad', 'write', [[actividadId], { hora_fin }]);
+
+  // 2. Leer datos para clonar
+  const actData: any[] = await callKw('jornada.actividad', 'read', [[actividadId]], {
+    fields: ['name', 'proyecto_id', 'task_id', 'equipo_ids']
+  });
+
+  if (actData[0]) {
+    const original = actData[0];
+    
+    // 3. Crear nueva actividad idéntica pero sin fechas
+    await callKw('jornada.actividad', 'create', [{
+      name: original.name,
+      proyecto_id: original.proyecto_id ? original.proyecto_id[0] : false,
+      task_id: original.task_id ? original.task_id[0] : false,
+      equipo_ids: original.equipo_ids ? [[6, 0, original.equipo_ids]] : []
+    }]);
+  }
+}
+
+// ─── Finalizar actividad ──────────────────────────────────────────
+export async function finalizarActividad(actividadId: number, uid: number): Promise<void> {
+  const hora_fin = nowOdooFormat();
+  await callKw('jornada.actividad', 'write', [[actividadId], { 
+    hora_fin,
+    equipo_ids: [[4, uid]]
+  }]);
 
   try {
     // 1. Obtener el task_id asociado a la actividad

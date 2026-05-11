@@ -189,7 +189,7 @@ export default function LoginScreen() {
 
           {/* Info servidor */}
           <View style={styles.serverInfo}>
-            <Text style={styles.serverText}>🌐 odoopruebas.aleza.pro · bd: odoo</Text>
+            <Text style={styles.serverText}>🌐 jsc.siscentro.com · bd: odoo</Text>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>

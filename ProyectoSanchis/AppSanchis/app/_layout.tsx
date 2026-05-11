@@ -1,7 +1,7 @@
-import { Stack } from 'expo-router';
+import { Stack, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { StyleSheet } from 'react-native';
+import { StyleSheet, TouchableOpacity, Text } from 'react-native';
 import { Colors } from '../constants/theme';
 
 export default function RootLayout() {
@@ -26,7 +26,21 @@ export default function RootLayout() {
         />
         <Stack.Screen name="parte/[id]" options={{ title: 'Iniciar Actividad' }} />
         <Stack.Screen name="actividad/[id]" options={{ title: 'Finalizar Actividad' }} />
-        <Stack.Screen name="actividad/materiales/[id]" options={{ title: 'Materiales' }} />
+        <Stack.Screen
+          name="actividad/materiales/[id]"
+          options={({ navigation }) => ({
+            title: 'Materiales',
+            headerLeft: () => (
+              <TouchableOpacity
+                onPress={() => navigation.goBack()}
+                style={styles.backBtn}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.backBtnText}>‹</Text>
+              </TouchableOpacity>
+            ),
+          })}
+        />
       </Stack>
     </GestureHandlerRootView>
   );
@@ -34,4 +48,17 @@ export default function RootLayout() {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: Colors.background },
+  backBtn: {
+    width: 52,
+    height: 52,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: -4,
+  },
+  backBtnText: {
+    color: Colors.textPrimary,
+    fontSize: 40,
+    fontWeight: '200',
+    lineHeight: 44,
+  },
 });

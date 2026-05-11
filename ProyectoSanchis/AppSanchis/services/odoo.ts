@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // ─── CONFIGURACIÓN ────────────────────────────────────────────────
-export const BASE_URL = 'https://odoopruebas.aleza.pro';
+export const BASE_URL = 'https://jsc.siscentro.com';
 export const DB_NAME = 'odoo';
 
 // ─── INSTANCIA AXIOS ──────────────────────────────────────────────
