@@ -23,7 +23,7 @@ function InfoCard({ label, value, icon, highlight }: {
         <Text style={styles.infoIcon}>{icon}</Text>
         <Text style={styles.infoLabel}>{label}</Text>
       </View>
-      <Text style={[styles.infoValue, highlight && { color: highlight }]}>{value}</Text>
+      <Text style={[styles.infoValue, highlight && { color: highlight }]}>{String(value || '')}</Text>
     </View>
   );
 }
@@ -31,7 +31,9 @@ function InfoCard({ label, value, icon, highlight }: {
 function formatDateTime(str?: string | false | null, fallback = 'Pendiente') {
   if (!str) return fallback;
   try {
-    return format(parseISO(str.replace(' ', 'T')), "dd/MM/yyyy 'a las' HH:mm", { locale: es });
+    // Añadimos 'Z' para que parseISO lo trate como UTC y lo convierta a local
+    const isoStr = str.replace(' ', 'T') + 'Z';
+    return format(parseISO(isoStr), "dd/MM/yyyy 'a las' HH:mm", { locale: es });
   } catch { return String(str); }
 }
 
@@ -144,10 +146,27 @@ export default function ActividadDetailScreen() {
           value={actividad.cliente_id && actividad.cliente_id[1] ? actividad.cliente_id[1] : 'Sin cliente'}
           icon="🏢"
         />
-        {actividad.factura_id && actividad.factura_id[1]
-          ? <InfoCard label="Factura" value={actividad.factura_id[1]} icon="🧾" />
-          : <InfoCard label="Factura" value="Sin factura asociada" icon="🧾" />
-        }
+        {actividad.factura_id && actividad.factura_id[0] ? (
+          <TouchableOpacity 
+            onPress={() => router.push(`/factura/${(actividad.factura_id as any)[0]}`)}
+            activeOpacity={0.7}
+          >
+            <View style={[styles.infoCard, { borderColor: Colors.primary, borderWidth: 1.5 }]}>
+              <View style={styles.infoHeader}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, flex: 1 }}>
+                  <Text style={styles.infoIcon}>🧾</Text>
+                  <Text style={styles.infoLabel}>Factura</Text>
+                </View>
+                <View style={styles.verFacturaBadge}>
+                  <Text style={styles.verFacturaText}>Ver Factura</Text>
+                </View>
+              </View>
+              <Text style={[styles.infoValue, { color: Colors.primary }]}>{String(actividad.factura_id[1])}</Text>
+            </View>
+          </TouchableOpacity>
+        ) : (
+          <InfoCard label="Factura" value="Sin factura asociada" icon="🧾" />
+        )}
 
         {/* Fechas: mostrar si ya están en curso o finalizadas */}
         {(enCurso || finalizada) && (
@@ -201,7 +220,7 @@ export default function ActividadDetailScreen() {
               onPress={() => router.push(`/actividad/materiales/${actividad.id}?estado=enCurso`)}
               activeOpacity={0.85}
             >
-              <Text style={styles.actionBtnTextSecondary}>📦 Materiales Restantes</Text>
+              <Text style={styles.actionBtnTextSecondary}>📦 Materiales (Usados / Restantes)</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -212,7 +231,10 @@ export default function ActividadDetailScreen() {
             >
               {acting 
                 ? <ActivityIndicator color={Colors.textPrimary} size="small" />
-                : <Text style={styles.actionBtnIcon}>⏸</Text>
+                : <>
+                    <Text style={[styles.actionBtnIcon, { color: Colors.textPrimary }]}>⏸</Text>
+                    <Text style={[styles.actionBtnText, { color: Colors.textPrimary, fontSize: 14 }]}>Pausar</Text>
+                  </>
               }
             </TouchableOpacity>
 
@@ -331,4 +353,19 @@ const styles = StyleSheet.create({
   actionBtnIcon: { color: '#fff', fontSize: 18 },
   actionBtnText: { color: '#fff', fontSize: Typography.sizes.xl, fontWeight: Typography.weights.bold },
   actionBtnTextSecondary: { color: Colors.primary, fontSize: Typography.sizes.md, fontWeight: Typography.weights.bold },
+
+  verFacturaBadge: {
+    backgroundColor: Colors.primary + '15',
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 4,
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    borderColor: Colors.primary + '33',
+  },
+  verFacturaText: {
+    color: Colors.primary,
+    fontSize: 12,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+  },
 });

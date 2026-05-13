@@ -10,6 +10,7 @@ interface ActividadCardProps {
   onPausar?: (actividad: ActividadEnriquecida) => void;
   onFinalizar?: (actividad: ActividadEnriquecida) => void;
   onMateriales?: (actividad: ActividadEnriquecida) => void;
+  onFactura?: (facturaId: number) => void;
   isActing?: boolean;
 }
 
@@ -20,6 +21,7 @@ export default function ActividadCard({
   onPausar, 
   onFinalizar,
   onMateriales,
+  onFactura,
   isActing 
 }: ActividadCardProps) {
   
@@ -36,6 +38,7 @@ export default function ActividadCard({
   const enCurso = !!actividad.hora_inicio && !actividad.hora_fin;
   const pendiente = !actividad.hora_inicio;
   const finalizada = !!actividad.hora_fin;
+  const tieneFactura = actividad.factura_id && Array.isArray(actividad.factura_id) && actividad.factura_id[0];
 
   return (
     <View style={styles.card}>
@@ -63,7 +66,7 @@ export default function ActividadCard({
         {actividad.factura_id && Array.isArray(actividad.factura_id) && (
           <View style={styles.row}>
             <Text style={styles.icon}>🧾</Text>
-            <Text style={styles.value} numberOfLines={1}>{actividad.factura_id[1]}</Text>
+            <Text style={styles.value} numberOfLines={1}>{String(actividad.factura_id[1])}</Text>
           </View>
         )}
 
@@ -80,7 +83,7 @@ export default function ActividadCard({
       </TouchableOpacity>
 
       {/* Action Buttons */}
-      {(onIniciar || onPausar || onFinalizar || onMateriales) && (pendiente || enCurso || finalizada) && (
+      {(onIniciar || onPausar || onFinalizar || onMateriales) && (
         <View style={styles.actionRow}>
           {pendiente && onIniciar && (
             <TouchableOpacity 
@@ -103,12 +106,12 @@ export default function ActividadCard({
             <>
               {onMateriales && (
                 <TouchableOpacity 
-                  style={[styles.actionBtn, styles.btnPrimary, { paddingHorizontal: Spacing.sm }]} 
+                  style={[styles.actionBtn, styles.btnSecondary, { flex: 1 }]} 
                   onPress={() => onMateriales(actividad)}
                   disabled={isActing}
                 >
-                  <Text style={styles.btnIcon}>📦</Text>
-                  <Text style={styles.btnText}>Mat.</Text>
+                  <Text style={[styles.btnIcon, { color: Colors.textPrimary }]}>📦</Text>
+                  <Text style={[styles.btnText, { color: Colors.textPrimary }]}>Mat.</Text>
                 </TouchableOpacity>
               )}
               {onPausar && (
@@ -146,17 +149,18 @@ export default function ActividadCard({
             </>
           )}
 
-          {finalizada && onMateriales && (
+          {finalizada && !pendiente && !enCurso && onMateriales && (
             <TouchableOpacity 
-              style={[styles.actionBtn, styles.btnPrimary, { flex: 1 }]} 
+              style={[styles.actionBtn, styles.btnSecondary, { flex: 1 }]} 
               onPress={() => onMateriales(actividad)}
             >
-              <Text style={styles.btnIcon}>📦</Text>
-              <Text style={styles.btnText}>Ver materiales</Text>
+              <Text style={[styles.btnIcon, { color: Colors.textPrimary }]}>📦</Text>
+              <Text style={[styles.btnText, { color: Colors.textPrimary }]}>Ver materiales</Text>
             </TouchableOpacity>
           )}
         </View>
       )}
+
 
     </View>
   );

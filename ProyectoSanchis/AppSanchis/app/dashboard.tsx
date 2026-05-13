@@ -164,6 +164,10 @@ export default function DashboardScreen() {
     router.push(`/actividad/materiales/${actividad.id}?estado=${estado}`);
   };
 
+  const handleFactura = (facturaId: number) => {
+    router.push(`/factura/${facturaId}`);
+  };
+
   const renderSection = (title: string, emoji: string, data: ActividadEnriquecida[], extra?: React.ReactNode) => (
     <View style={styles.section}>
       <View style={styles.sectionHeader}>
@@ -184,6 +188,7 @@ export default function DashboardScreen() {
               onPausar={handlePausarActividad}
               onFinalizar={handleFinalizarActividad}
               onMateriales={handleMateriales}
+              onFactura={handleFactura}
               isActing={actingId === a.id}
             />
           ))

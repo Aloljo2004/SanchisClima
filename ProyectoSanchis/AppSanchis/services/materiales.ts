@@ -15,15 +15,27 @@ export interface Producto {
   uom_id: [number, string];
 }
 
-// ─── Buscar productos ─────────────────────────────────────────────
-export async function searchProductos(query: string): Promise<Producto[]> {
-  if (!query.trim()) return [];
+// ─── Obtener/Buscar productos ──────────────────────────────────────
+export async function getProductos(query: string = ''): Promise<Producto[]> {
+  const domain: any[] = [['active', '=', true]];
+  if (query.trim()) {
+    domain.push(['name', 'ilike', query]);
+  }
+  
   return callKw(
     'product.product',
     'search_read',
-    [[['name', 'ilike', query], ['active', '=', true]]],
-    { fields: ['id', 'name', 'uom_id'], limit: 20 }
+    [domain],
+    { 
+      fields: ['id', 'name', 'uom_id'], 
+      order: 'name asc', 
+      limit: 100 // Limitamos a 100 para rendimiento, el buscador filtrará más
+    }
   );
+}
+
+export async function searchProductos(query: string): Promise<Producto[]> {
+  return getProductos(query);
 }
 
 // ─── Todos los materiales de una actividad (separados por a_pedir) ──
@@ -108,4 +120,13 @@ export async function addMaterial(
 export async function deleteMaterial(materialId: number, forPedir: boolean = false): Promise<void> {
   const model = forPedir ? 'jornada.material.faltante' : 'jornada.actividad.material';
   await callKw(model, 'unlink', [[materialId]]);
+}
+// ─── Actualizar cantidad de material ──────────────────────────────
+export async function updateMaterial(
+  materialId: number, 
+  nuevaCantidad: number, 
+  forPedir: boolean = false
+): Promise<void> {
+  const model = forPedir ? 'jornada.material.faltante' : 'jornada.actividad.material';
+  await callKw(model, 'write', [[materialId], { cantidad: nuevaCantidad }]);
 }

@@ -4,14 +4,14 @@
     "slug": "partes-de-trabajo",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/jsc.png",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "scheme": "partes-de-trabajo",
     "splash": {
-      "image": "./assets/splash-icon.png",
+      "image": "./assets/jsc.png",
       "resizeMode": "contain",
-      "backgroundColor": "#0f172a"
+      "backgroundColor": "#ffffff"
     },
     "ios": {
       "supportsTablet": false,
@@ -22,8 +22,8 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#0f172a"
+        "foregroundImage": "./assets/jsc.png",
+        "backgroundColor": "#ffffff"
       },
       "package": "com.sanchis.partesdetrabajo",
       "permissions": [
