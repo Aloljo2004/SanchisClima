@@ -95,7 +95,8 @@ export async function addMaterial(
       product_id: [product.id, product.name],
       cantidad,
       uom_id: product.uom_id,
-      proyecto_id: [proyecto_id, '']
+      actividad_id: actividadId,
+      a_pedir: true
     };
   } else {
     // Si es material utilizado, va a la actividad

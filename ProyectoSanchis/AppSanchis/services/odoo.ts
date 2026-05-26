@@ -16,6 +16,9 @@ const axiosInstance = axios.create({
 let _sessionId: string | null = null;
 export const setSessionId = (sid: string | null) => { _sessionId = sid; };
 
+let _allowedCompanyIds: number[] = [];
+export const setAllowedCompanyIds = (ids: number[]) => { _allowedCompanyIds = ids || []; };
+
 axiosInstance.interceptors.request.use((config) => {
   if (_sessionId) {
     config.headers['Cookie'] = `session_id=${_sessionId}`;
@@ -40,11 +43,26 @@ export async function callKw(
   args: any[],
   kwargs: Record<string, any> = {}
 ): Promise<any> {
+  const context = {
+    ...kwargs.context,
+  };
+  if (_allowedCompanyIds && _allowedCompanyIds.length > 0) {
+    context.allowed_company_ids = _allowedCompanyIds;
+  }
+
   const response = await axiosInstance.post(`/web/dataset/call_kw/${model}/${method}`, {
     jsonrpc: '2.0',
     method: 'call',
     id: Date.now(),
-    params: { model, method, args, kwargs },
+    params: { 
+      model, 
+      method, 
+      args, 
+      kwargs: {
+        ...kwargs,
+        context,
+      } 
+    },
   });
 
   if (response.data?.error) {
@@ -80,12 +98,34 @@ export async function authenticate(login: string, password: string) {
     if (match) sessionId = match[1];
   }
 
+  let companyIds: number[] = [];
+  if (result.user_companies && result.user_companies.allowed_companies) {
+    companyIds = Object.keys(result.user_companies.allowed_companies).map(Number);
+  } else if (result.company_ids) {
+    companyIds = result.company_ids;
+  } else if (result.company_id) {
+    companyIds = [result.company_id];
+  }
+
   return {
     uid: result.uid as number,
     sessionId,
     username: login,
     fullName: (result.partner_display_name || result.name || login) as string,
+    companyIds,
   };
+}
+
+export async function fetchUserCompanyIds(uid: number): Promise<number[]> {
+  try {
+    const result = await callKw('res.users', 'read', [[uid], ['company_ids']]);
+    if (result && result[0] && result[0].company_ids) {
+      return result[0].company_ids;
+    }
+  } catch (e) {
+    console.warn('Error fetching user company_ids:', e);
+  }
+  return [];
 }
 
 export default axiosInstance;

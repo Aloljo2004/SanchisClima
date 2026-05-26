@@ -148,7 +148,7 @@ export default function ActividadDetailScreen() {
         />
         {actividad.factura_id && actividad.factura_id[0] ? (
           <TouchableOpacity 
-            onPress={() => router.push(`/factura/${(actividad.factura_id as any)[0]}`)}
+            onPress={() => router.push(`/factura/${(actividad.factura_id as any)[0]}?name=${encodeURIComponent(String((actividad.factura_id as any)[1]))}`)}
             activeOpacity={0.7}
           >
             <View style={[styles.infoCard, { borderColor: Colors.primary, borderWidth: 1.5 }]}>

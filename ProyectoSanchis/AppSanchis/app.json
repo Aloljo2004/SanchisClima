@@ -4,12 +4,12 @@
     "slug": "partes-de-trabajo",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/jsc.png",
+    "icon": "./assets/adaptive-icon-padded.png",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "scheme": "partes-de-trabajo",
     "splash": {
-      "image": "./assets/jsc.png",
+      "image": "./assets/adaptive-icon-padded.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
@@ -22,7 +22,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/jsc.png",
+        "foregroundImage": "./assets/adaptive-icon-padded.png",
         "backgroundColor": "#ffffff"
       },
       "package": "com.sanchis.partesdetrabajo",

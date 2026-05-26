@@ -19,13 +19,61 @@ type Tab = 'usados' | 'aPedir';
 interface CatalogItemProps {
   producto: Producto;
   qty: number;
-  onIncrement: () => void;
-  onDecrement: () => void;
+  onSaveQty: (newQty: number) => Promise<void>;
   loading?: boolean;
   color: string;
 }
 
-function CatalogItem({ producto, qty, onIncrement, onDecrement, loading, color }: CatalogItemProps) {
+function CatalogItem({ producto, qty, onSaveQty, loading, color }: CatalogItemProps) {
+  const [text, setText] = useState(qty > 0 ? qty.toString() : '');
+
+  // Sincronizar el estado local cuando cambia la cantidad guardada externamente
+  useEffect(() => {
+    setText(qty > 0 ? qty.toString() : '');
+  }, [qty]);
+
+  const handleSave = () => {
+    const cleanedText = text.replace(',', '.').trim();
+    if (cleanedText === '') {
+      if (qty !== 0) {
+        onSaveQty(0);
+      }
+      return;
+    }
+
+    const parsed = parseFloat(cleanedText);
+    if (isNaN(parsed)) {
+      Alert.alert('Error', 'Por favor, introduce un número válido');
+      setText(qty > 0 ? qty.toString() : '');
+      return;
+    }
+
+    if (parsed < 0) {
+      Alert.alert('Error', 'La cantidad no puede ser negativa');
+      setText(qty > 0 ? qty.toString() : '');
+      return;
+    }
+
+    if (parsed !== qty) {
+      onSaveQty(parsed);
+    }
+  };
+
+  const hasChanges = useMemo(() => {
+    const cleanedText = text.replace(',', '.').trim();
+    if (cleanedText === '') {
+      return qty !== 0;
+    }
+    const parsed = parseFloat(cleanedText);
+    if (isNaN(parsed)) return false;
+    return parsed !== qty;
+  }, [text, qty]);
+
+  const handleClear = () => {
+    setText('');
+    onSaveQty(0);
+  };
+
   return (
     <View style={[styles.itemCard, qty > 0 && { borderColor: color, borderWidth: 1.5 }]}>
       <View style={styles.itemInfo}>
@@ -34,37 +82,41 @@ function CatalogItem({ producto, qty, onIncrement, onDecrement, loading, color }
       </View>
       
       <View style={styles.controls}>
-        {qty > 0 && (
-          <>
+        <TextInput
+          style={[
+            styles.qtyInput,
+            qty > 0 && { borderColor: color },
+            hasChanges && { borderColor: Colors.warning, borderWidth: 1.5 }
+          ]}
+          value={text}
+          onChangeText={setText}
+          placeholder="0"
+          placeholderTextColor={Colors.textMuted}
+          keyboardType="decimal-pad"
+          onBlur={handleSave}
+          onSubmitEditing={handleSave}
+          editable={!loading}
+        />
+
+        <View style={styles.actionBtnContainer}>
+          {loading ? (
+            <ActivityIndicator size="small" color={color} style={styles.loader} />
+          ) : hasChanges ? (
             <TouchableOpacity 
-              onPress={onDecrement} 
-              style={[styles.controlBtn, { borderColor: color }]}
-              disabled={loading}
+              onPress={handleSave} 
+              style={[styles.actionBtn, { backgroundColor: Colors.success, borderColor: Colors.success }]}
             >
-              <Text style={[styles.controlText, { color }]}>−</Text>
+              <Text style={styles.actionBtnText}>✓</Text>
             </TouchableOpacity>
-            
-            <View style={styles.qtyBadge}>
-              {loading ? (
-                <ActivityIndicator size="small" color={color} />
-              ) : (
-                <Text style={styles.qtyText}>{qty}</Text>
-              )}
-            </View>
-          </>
-        )}
-        
-        <TouchableOpacity 
-          onPress={onIncrement} 
-          style={[styles.controlBtn, { backgroundColor: color, borderColor: color }]}
-          disabled={loading}
-        >
-          {loading && qty === 0 ? (
-            <ActivityIndicator size="small" color="#fff" />
-          ) : (
-            <Text style={[styles.controlText, { color: '#fff' }]}>+</Text>
-          )}
-        </TouchableOpacity>
+          ) : qty > 0 ? (
+            <TouchableOpacity 
+              onPress={handleClear} 
+              style={[styles.actionBtn, { backgroundColor: 'transparent', borderColor: Colors.borderLight }]}
+            >
+              <Text style={[styles.actionBtnText, { color: Colors.danger }]}>✕</Text>
+            </TouchableOpacity>
+          ) : null}
+        </View>
       </View>
     </View>
   );
@@ -129,25 +181,22 @@ export default function MaterialesScreen() {
   }, [query]);
 
   // ── Lógica de Incremento/Decremento ──────────────────────────────
-  const handleAction = async (producto: Producto, delta: number) => {
+  const handleSaveQty = async (producto: Producto, newQty: number) => {
     setActingId(producto.id);
     const isForPedir = activeTab === 'aPedir';
     const currentList = isForPedir ? aPedir : usados;
     const existing = currentList.find(m => m.product_id[0] === producto.id);
 
     try {
-      if (delta > 0) {
+      if (newQty <= 0) {
         if (existing) {
-          await updateMaterial(existing.id, existing.cantidad + delta, isForPedir);
-        } else {
-          await addMaterial(actividadId, producto, delta, isForPedir);
+          await deleteMaterial(existing.id, isForPedir);
         }
       } else {
-        if (!existing) return;
-        if (existing.cantidad + delta <= 0) {
-          await deleteMaterial(existing.id, isForPedir);
+        if (existing) {
+          await updateMaterial(existing.id, newQty, isForPedir);
         } else {
-          await updateMaterial(existing.id, existing.cantidad + delta, isForPedir);
+          await addMaterial(actividadId, producto, newQty, isForPedir);
         }
       }
       // Recargar materiales para reflejar cambios
@@ -248,8 +297,7 @@ export default function MaterialesScreen() {
               qty={item.qty}
               color={tabColor}
               loading={item.isActing}
-              onIncrement={() => handleAction(item.producto, 1)}
-              onDecrement={() => handleAction(item.producto, -1)}
+              onSaveQty={(newQty) => handleSaveQty(item.producto, newQty)}
             />
           )}
           contentContainerStyle={styles.list}
@@ -300,14 +348,40 @@ const styles = StyleSheet.create({
   itemUom: { fontSize: Typography.sizes.xs, color: Colors.textMuted, marginTop: 2 },
   
   controls: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
-  controlBtn: {
-    width: 36, height: 36, borderRadius: 18,
-    borderWidth: 1, justifyContent: 'center', alignItems: 'center',
+  qtyInput: {
+    width: 70,
+    height: 38,
+    borderRadius: Radius.sm,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    textAlign: 'center',
+    color: Colors.textPrimary,
+    backgroundColor: Colors.surfaceElevated,
+    fontSize: 16,
+    paddingHorizontal: Spacing.xs,
   },
-  controlText: { fontSize: 20, fontWeight: 'bold' },
-  
-  qtyBadge: { minWidth: 30, alignItems: 'center' },
-  qtyText: { fontSize: Typography.sizes.lg, fontWeight: 'bold', color: Colors.textPrimary },
+  actionBtnContainer: {
+    width: 36,
+    height: 36,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  actionBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    borderWidth: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  actionBtnText: {
+    fontSize: Typography.sizes.md,
+    fontWeight: 'bold',
+    color: '#fff',
+  },
+  loader: {
+    margin: 0,
+  },
 
   headerBtnSalir: {
     backgroundColor: Colors.danger,

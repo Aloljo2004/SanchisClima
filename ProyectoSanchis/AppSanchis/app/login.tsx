@@ -11,8 +11,7 @@ import {
   saveCredentials, saveSession, isBiometricAvailable,
   authenticateWithBiometric, getSupportedBiometricType, getStoredCredentials,
 } from '../services/auth';
-import { authenticate } from '../services/odoo';
-import { setSessionId } from '../services/odoo';
+import { authenticate, setSessionId, setAllowedCompanyIds } from '../services/odoo';
 import { Colors, Typography, Spacing, Radius, Shadow } from '../constants/theme';
 
 const { height } = Dimensions.get('window');
@@ -51,9 +50,10 @@ export default function LoginScreen() {
     const result = await authenticate(usr, pwd);
     // Persistir sesión
     setSessionId(result.sessionId);
+    setAllowedCompanyIds(result.companyIds || []);
     await saveCredentials(usr, pwd);
-    await saveSession(result.uid, result.sessionId, result.fullName);
-    setSession(result.uid, result.sessionId, usr, result.fullName);
+    await saveSession(result.uid, result.sessionId, result.fullName, result.companyIds || []);
+    setSession(result.uid, result.sessionId, usr, result.fullName, result.companyIds || []);
     router.replace('/dashboard');
   };
 

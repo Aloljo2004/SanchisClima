@@ -7,6 +7,7 @@ const KEYS = {
   USERNAME: 'odoo_username',
   PASSWORD: 'odoo_password',
   FULL_NAME: 'odoo_full_name',
+  COMPANY_IDS: 'odoo_company_ids',
 };
 
 // ─── Guardar / leer credenciales ──────────────────────────────────
@@ -22,19 +23,35 @@ export async function getStoredCredentials(): Promise<{ username: string; passwo
   return null;
 }
 
-export async function saveSession(uid: number, sessionId: string, fullName: string) {
+export async function saveSession(uid: number, sessionId: string, fullName: string, companyIds: number[]) {
   await SecureStore.setItemAsync(KEYS.UID, String(uid));
   await SecureStore.setItemAsync(KEYS.SESSION_ID, sessionId);
   await SecureStore.setItemAsync(KEYS.FULL_NAME, fullName);
+  await SecureStore.setItemAsync(KEYS.COMPANY_IDS, JSON.stringify(companyIds || []));
 }
 
-export async function getStoredSession(): Promise<{ uid: number; sessionId: string; username: string; fullName: string } | null> {
+export async function getStoredSession(): Promise<{ uid: number; sessionId: string; username: string; fullName: string; companyIds: number[] } | null> {
   const uid = await SecureStore.getItemAsync(KEYS.UID);
   const sessionId = await SecureStore.getItemAsync(KEYS.SESSION_ID);
   const username = await SecureStore.getItemAsync(KEYS.USERNAME);
   const fullName = await SecureStore.getItemAsync(KEYS.FULL_NAME);
+  const companyIdsStr = await SecureStore.getItemAsync(KEYS.COMPANY_IDS);
+  
+  let companyIds: number[] = [];
+  if (companyIdsStr) {
+    try {
+      companyIds = JSON.parse(companyIdsStr);
+    } catch (_) {}
+  }
+
   if (uid && sessionId && username) {
-    return { uid: Number(uid), sessionId, username, fullName: fullName || username };
+    return { 
+      uid: Number(uid), 
+      sessionId, 
+      username, 
+      fullName: fullName || username,
+      companyIds 
+    };
   }
   return null;
 }
@@ -43,6 +60,7 @@ export async function clearSession() {
   await SecureStore.deleteItemAsync(KEYS.SESSION_ID);
   await SecureStore.deleteItemAsync(KEYS.UID);
   await SecureStore.deleteItemAsync(KEYS.FULL_NAME);
+  await SecureStore.deleteItemAsync(KEYS.COMPANY_IDS);
 }
 
 // ─── Biometría ────────────────────────────────────────────────────
