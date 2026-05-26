@@ -1,0 +1,21 @@
+# Sistema Windows
+AppData/
+AppData
+*.log
+*.ldb
+*.db-shm
+*.db-wal
+
+# OneDrive y sistema
+.dropbox
+desktop.ini
+Thumbs.db
+
+# Node
+node_modules/
+
+# Git
+.git/
+
+# Expo
+.expo/
